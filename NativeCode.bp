@@ -45,6 +45,7 @@ cc_defaults {
         "liblog",
         "libnativehelper",
     ],
+    static_libs: ["libnativehelper_compat_libc++"],
 }
 
 cc_library_shared {
@@ -65,11 +66,9 @@ cc_library_shared {
     ],
     shared_libs: [
         "libandroidio",
-        "libbase",
         "libcrypto",
         "libicu",
         "libexpat",
-        "libnativehelper",
         "libz",
     ],
     static_libs: [
@@ -128,10 +127,11 @@ cc_defaults {
         "libandroidio",
         "libcrypto",
         "libicu",
-        "libnativehelper",
         "libz",
     ],
-    static_libs: ["libfdlibm"],
+    static_libs: [
+        "libfdlibm",
+    ],
 
     target: {
         linux_glibc: {
@@ -232,6 +232,8 @@ cc_test {
         "liblog",
         "libnativehelper",
     ],
+
+    static_libs: ["libnativehelper_compat_libc++"],
 }
 
 // Set of benchmarks for libjavacore functions.
