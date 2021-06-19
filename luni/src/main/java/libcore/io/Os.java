@@ -26,6 +26,7 @@ import android.system.StructCapUserHeader;
 import android.system.StructGroupReq;
 import android.system.StructIfaddrs;
 import android.system.StructLinger;
+import android.system.StructMsghdr;
 import android.system.StructPasswd;
 import android.system.StructPollfd;
 import android.system.StructRlimit;
@@ -44,8 +45,17 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 
-/** @hide */
-@libcore.api.CorePlatformApi
+/**
+ * Linux-like operating system. The user of this interface has access to various methods
+ * that expose basic operating system functionality, like file and file descriptors operations
+ * (open, close, read, write), socket operations (connect, bind, send*, recv*), process
+ * operations (exec*, getpid), filesystem operations (mkdir, unlink, chmod, chown) and others.
+ *
+ * @see Linux
+ *
+ * @hide
+ */
+@libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
 public interface Os {
     public FileDescriptor accept(FileDescriptor fd, SocketAddress peerAddress) throws ErrnoException, SocketException;
     public boolean access(String path, int mode) throws ErrnoException;
@@ -113,7 +123,7 @@ public interface Os {
     public InetAddress inet_pton(int family, String address);
     public int ioctlFlags(FileDescriptor fd, String interfaceName) throws ErrnoException;
     public InetAddress ioctlInetAddress(FileDescriptor fd, int cmd, String interfaceName) throws ErrnoException;
-    public int ioctlInt(FileDescriptor fd, int cmd, Int32Ref arg) throws ErrnoException;
+    public int ioctlInt(FileDescriptor fd, int cmd) throws ErrnoException;
     public int ioctlMTU(FileDescriptor fd, String interfaceName) throws ErrnoException;
     public boolean isatty(FileDescriptor fd);
     public void kill(int pid, int signal) throws ErrnoException;
@@ -153,10 +163,12 @@ public interface Os {
     public int readv(FileDescriptor fd, Object[] buffers, int[] offsets, int[] byteCounts) throws ErrnoException, InterruptedIOException;
     public int recvfrom(FileDescriptor fd, ByteBuffer buffer, int flags, InetSocketAddress srcAddress) throws ErrnoException, SocketException;
     public int recvfrom(FileDescriptor fd, byte[] bytes, int byteOffset, int byteCount, int flags, InetSocketAddress srcAddress) throws ErrnoException, SocketException;
+    public int recvmsg(FileDescriptor fd, StructMsghdr msg, int flags) throws ErrnoException, SocketException;
     @UnsupportedAppUsage
     public void remove(String path) throws ErrnoException;
     public void removexattr(String path, String name) throws ErrnoException;
     public void rename(String oldPath, String newPath) throws ErrnoException;
+    public int sendmsg(FileDescriptor fd, StructMsghdr msg, int flags) throws ErrnoException, SocketException;
     public int sendto(FileDescriptor fd, ByteBuffer buffer, int flags, InetAddress inetAddress, int port) throws ErrnoException, SocketException;
     public int sendto(FileDescriptor fd, byte[] bytes, int byteOffset, int byteCount, int flags, InetAddress inetAddress, int port) throws ErrnoException, SocketException;
     public int sendto(FileDescriptor fd, byte[] bytes, int byteOffset, int byteCount, int flags, SocketAddress address) throws ErrnoException, SocketException;
@@ -212,7 +224,7 @@ public interface Os {
      * @param update the new value to set; must not be null.
      * @return whether the update was successful.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static boolean compareAndSetDefault(Os expect, Os update) {
         return Libcore.compareAndSetOs(expect, update);
     }
@@ -220,7 +232,7 @@ public interface Os {
     /**
      * @return the system's default {@link Os} implementation currently in use.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static Os getDefault() {
         return Libcore.getOs();
     }
