@@ -34,16 +34,31 @@ import libcore.util.Nullable;
  *
  * @hide
  */
-@libcore.api.CorePlatformApi
+@libcore.api.CorePlatformApi(status = CorePlatformApi.Status.STABLE)
 public final class MimeMap {
 
-    @CorePlatformApi
-    public static Builder builder() {
+    /**
+     * Creates a MIME type map builder.
+     *
+     * @return builder
+     *
+     * @see MimeMap.Builder
+     */
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
+    public static @NonNull Builder builder() {
         return new Builder();
     }
 
-    @CorePlatformApi
-    public Builder buildUpon() {
+    /**
+     * Creates a MIME type map builder with values based on {@code this} instance.
+     * This builder will contain all previously added MIMEs and extensions.
+     *
+     * @return builder
+     *
+     * @see MimeMap.Builder
+     */
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
+    public @NonNull Builder buildUpon() {
         return new Builder(mimeToExt, extToMime);
     }
 
@@ -60,12 +75,12 @@ public final class MimeMap {
     private static volatile MemoizingSupplier<@NonNull MimeMap> instanceSupplier =
             new MemoizingSupplier<>(
                     () -> builder()
-                            .put("application/pdf", "pdf")
-                            .put("image/jpeg", "jpg")
-                            .put("image/x-ms-bmp", "bmp")
-                            .put("text/html", Arrays.asList("htm", "html"))
-                            .put("text/plain", Arrays.asList("text", "txt"))
-                            .put("text/x-java", "java")
+                            .addMimeMapping("application/pdf", "pdf")
+                            .addMimeMapping("image/jpeg", "jpg")
+                            .addMimeMapping("image/x-ms-bmp", "bmp")
+                            .addMimeMapping("text/html", Arrays.asList("htm", "html"))
+                            .addMimeMapping("text/plain", Arrays.asList("text", "txt"))
+                            .addMimeMapping("text/x-java", "java")
                             .build());
 
     private MimeMap(Map<String, String> mimeToExt, Map<String, String> extToMime) {
@@ -82,9 +97,11 @@ public final class MimeMap {
     }
 
     /**
+     * Gets system's current default {@link MimeMap}
+     *
      * @return The system's current default {@link MimeMap}.
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public static @NonNull MimeMap getDefault() {
         return Objects.requireNonNull(instanceSupplier.get());
     }
@@ -100,7 +117,7 @@ public final class MimeMap {
      * {@link #setDefaultSupplier(Supplier)} will return that same instance
      * without consulting {@code mimeMapSupplier} a second time.
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public static void setDefaultSupplier(@NonNull Supplier<@NonNull MimeMap> mimeMapSupplier) {
         instanceSupplier = new MemoizingSupplier<>(Objects.requireNonNull(mimeMapSupplier));
     }
@@ -112,7 +129,7 @@ public final class MimeMap {
      * @return Whether a MIME type has been registered for the given case insensitive file
      *         extension.
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public final boolean hasExtension(@Nullable String extension) {
         return guessMimeTypeFromExtension(extension) != null;
     }
@@ -125,7 +142,7 @@ public final class MimeMap {
      * @return The lower-case MIME type registered for the given case insensitive file extension,
      *         or null if there is none.
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public final @Nullable String guessMimeTypeFromExtension(@Nullable String extension) {
         if (extension == null) {
             return null;
@@ -135,11 +152,13 @@ public final class MimeMap {
     }
 
     /**
+     * Returns whether given case insensetive MIME type is mapped to a file extension.
+     *
      * @param mimeType A MIME type (i.e. {@code "text/plain")
      * @return Whether the given case insensitive MIME type is
      *         {@link #guessMimeTypeFromExtension(String) mapped} to a file extension.
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public final boolean hasMimeType(@Nullable String mimeType) {
         return guessExtensionFromMimeType(mimeType) != null;
     }
@@ -152,7 +171,7 @@ public final class MimeMap {
      * @return The lower-case file extension (without the leading "." that has been registered for
      *         the given case insensitive MIME type, or null if there is none.
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public final @Nullable String guessExtensionFromMimeType(@Nullable String mimeType) {
         if (mimeType == null) {
             return null;
@@ -166,9 +185,11 @@ public final class MimeMap {
      * {@link #hasMimeType(String) maps to some extension}. Note that the
      * reverse mapping might not exist.
      *
+     * @return unmodifiable {@link Set} of MIME types mapped to some extension
+     *
      * @hide
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public @NonNull Set<String> mimeTypes() {
         return Collections.unmodifiableSet(mimeToExt.keySet());
     }
@@ -178,9 +199,12 @@ public final class MimeMap {
      * {@link #hasExtension(String) maps to some MIME type}. Note that the
      * reverse mapping might not exist.
      *
+     * @return unmodifiable {@link Set} of extensions that this {@link MimeMap}
+     *         maps to some MIME type
+     *
      * @hide
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public @NonNull Set<String> extensions() {
         return Collections.unmodifiableSet(extToMime.keySet());
     }
@@ -220,9 +244,13 @@ public final class MimeMap {
     }
 
     /**
+     * A builder for mapping of MIME types to extensions and back.
+     * Use {@link #addMimeMapping(String, List)} and {@link #addMimeMapping(String, String)} to add
+     * mapping entries and build final {@link MimeMap} with {@link #build()}.
+     *
      * @hide
      */
-    @libcore.api.CorePlatformApi
+    @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     public static final class Builder {
         private final Map<String, String> mimeToExt;
         private final Map<String, String> extToMime;
@@ -324,8 +352,8 @@ public final class MimeMap {
          *                 been stripped off).
          * @return This builder.
          */
-        @CorePlatformApi
-        public Builder put(@NonNull String mimeSpec, @NonNull List<@NonNull String> extensionSpecs)
+        @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
+        public @NonNull Builder addMimeMapping(@NonNull String mimeSpec, @NonNull List<@NonNull String> extensionSpecs)
         {
             Element mimeElement = Element.ofMimeSpec(mimeSpec); // validate mimeSpec unconditionally
             if (extensionSpecs.isEmpty()) {
@@ -346,12 +374,17 @@ public final class MimeMap {
          *
          * @hide
          */
-        public Builder put(@NonNull String mimeSpec, @NonNull String extensionSpec) {
-            return put(mimeSpec, Collections.singletonList(extensionSpec));
+        public @NonNull Builder addMimeMapping(@NonNull String mimeSpec, @NonNull String extensionSpec) {
+            return addMimeMapping(mimeSpec, Collections.singletonList(extensionSpec));
         }
 
-        @CorePlatformApi
-        public MimeMap build() {
+        /**
+         * Builds {@link MimeMap} containing all added MIME mappings.
+         *
+         * @return {@link MimeMap} containing previously added MIME mapping entries
+         */
+        @CorePlatformApi(status = CorePlatformApi.Status.STABLE)
+        public @NonNull MimeMap build() {
             return new MimeMap(mimeToExt, extToMime);
         }
 
