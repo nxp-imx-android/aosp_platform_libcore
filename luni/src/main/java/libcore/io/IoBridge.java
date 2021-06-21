@@ -18,7 +18,6 @@ package libcore.io;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.system.ErrnoException;
-import android.system.Int32Ref;
 import android.system.StructGroupReq;
 import android.system.StructLinger;
 import android.system.StructPollfd;
@@ -61,18 +60,17 @@ public final class IoBridge {
 
     public static int available(FileDescriptor fd) throws IOException {
         try {
-            Int32Ref available = new Int32Ref(0);
-            Libcore.os.ioctlInt(fd, FIONREAD, available);
-            if (available.value < 0) {
+            int available = Libcore.os.ioctlInt(fd, FIONREAD);
+            if (available < 0) {
                 // If the fd refers to a regular file, the result is the difference between
                 // the file size and the file position. This may be negative if the position
                 // is past the end of the file. If the fd refers to a special file masquerading
                 // as a regular file, the result may be negative because the special file
                 // may appear to have zero size and yet a previous read call may have
                 // read some amount of data and caused the file position to be advanced.
-                available.value = 0;
+                available = 0;
             }
-            return available.value;
+            return available;
         } catch (ErrnoException errnoException) {
             if (errnoException.errno == ENOTTY) {
                 // The fd is unwilling to opine about its read buffer.
@@ -242,11 +240,18 @@ public final class IoBridge {
      */
     @libcore.api.CorePlatformApi
     public static void closeAndSignalBlockedThreads(FileDescriptor fd) throws IOException {
-        if (fd == null || !fd.valid()) {
+        if (fd == null) {
             return;
         }
-        // fd is invalid after we call release.
+
+        // fd is invalid after we call release$.
+        // If multiple threads reach this point simultaneously, release$ is synchronized, so one
+        // of them will receive the old fd, and the rest will get an empty FileDescriptor.
         FileDescriptor oldFd = fd.release$();
+        if (!oldFd.valid()) {
+            return;
+        }
+
         AsynchronousCloseMonitor.signalBlockedThreads(oldFd);
         try {
             Libcore.os.close(oldFd);
