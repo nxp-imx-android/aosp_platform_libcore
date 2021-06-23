@@ -17,19 +17,21 @@
 package dalvik.system;
 
 import android.compat.annotation.ChangeId;
-import android.compat.annotation.EnabledAfter;
+import android.compat.annotation.EnabledSince;
+import android.compat.annotation.Disabled;
 import android.compat.annotation.UnsupportedAppUsage;
 
 import dalvik.annotation.compat.VersionCodes;
+import dalvik.annotation.optimization.CriticalNative;
+import dalvik.annotation.optimization.FastNative;
+
+import libcore.api.CorePlatformApi;
 
 import java.lang.ref.FinalizerReference;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-
-import dalvik.annotation.optimization.CriticalNative;
-import dalvik.annotation.optimization.FastNative;
 
 /**
  * Provides an interface to VM-global, Dalvik-specific features.
@@ -38,7 +40,8 @@ import dalvik.annotation.optimization.FastNative;
  *
  * @hide
  */
-@libcore.api.CorePlatformApi
+@libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+@libcore.api.IntraCoreApi
 public final class VMRuntime {
 
     /**
@@ -65,32 +68,41 @@ public final class VMRuntime {
 
     /**
      * Remove meta-reflection workaround for hidden api usage for apps targeting R+. This allowed
-     * apps to obtain references to blacklisted fields and methods through an extra layer of
+     * apps to obtain references to blocklist fields and methods through an extra layer of
      * reflection.
      */
     @ChangeId
-    @EnabledAfter(targetSdkVersion = VersionCodes.Q)
+    @EnabledSince(targetSdkVersion = VersionCodes.R)
     private static final long
-        PREVENT_META_REFLECTION_BLACKLIST_ACCESS = 142365358; // This is a bug id.
+        PREVENT_META_REFLECTION_BLOCKLIST_ACCESS = 142365358; // This is a bug id.
 
     /**
      * Gating access to greylist-max-p APIs.
      */
     @ChangeId
-    @EnabledAfter(targetSdkVersion = VersionCodes.P)
+    @EnabledSince(targetSdkVersion = VersionCodes.Q)
     private static final long HIDE_MAXTARGETSDK_P_HIDDEN_APIS = 149997251; // This is a bug id.
 
     /**
      * Gating access to greylist-max-q APIs.
      */
     @ChangeId
-    @EnabledAfter(targetSdkVersion = VersionCodes.Q)
+    @EnabledSince(targetSdkVersion = VersionCodes.R)
     private static final long HIDE_MAXTARGETSDK_Q_HIDDEN_APIS = 149994052; // This is a bug id.
+
+    /**
+     * Allow apps accessing @TestApi APIs.
+     *
+     * <p>This will always be disabled by default and should only be used by platform test code.
+     */
+    @ChangeId
+    @Disabled
+    private static final long ALLOW_TEST_API_ACCESS = 166236554; // This is a bug id.
 
     /**
      * Interface for logging hidden API usage events.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public interface HiddenApiUsageLogger {
 
         // The following ACCESS_METHOD_ constants must match the values in
@@ -99,22 +111,26 @@ public final class VMRuntime {
          * Internal test value that does not correspond to an actual access by the
          * application. Never logged, added for completeness.
          */
+        @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
         public static final int ACCESS_METHOD_NONE = 0;
 
         /**
          *  Used when a method has been accessed via reflection.
          */
+        @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
         public static final int ACCESS_METHOD_REFLECTION = 1;
 
         /**
          *  Used when a method has been accessed via JNI.
          */
+        @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
         public static final int ACCESS_METHOD_JNI = 2;
 
         /**
          * Used when a method is accessed at link time. Never logged, added only
          * for completeness.
          */
+        @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
         public static final int ACCESS_METHOD_LINKING = 3;
 
         /**
@@ -141,8 +157,11 @@ public final class VMRuntime {
      * Sets the hidden API usage logger {@link #hiddenApiUsageLogger}.
      * It should only be called if {@link #setHiddenApiAccessLogSamplingRate(int)}
      * is called with a value > 0
+     *
+     * @param hiddenApiUsageLogger an object implement {@code HiddenApiUsageLogger} that the runtime
+     *          will call for logging hidden API checks.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static void setHiddenApiUsageLogger(HiddenApiUsageLogger hiddenApiUsageLogger) {
         VMRuntime.hiddenApiUsageLogger = hiddenApiUsageLogger;
     }
@@ -166,7 +185,8 @@ public final class VMRuntime {
      * any released version in {@code android.os.Build.VERSION_CODES}.
      * @hide
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+    // Must match android.os.Build.VERSION_CODES.CUR_DEVELOPMENT.
     public static final int SDK_VERSION_CUR_DEVELOPMENT = 10000;
 
     private static Consumer<String> nonSdkApiUsageConsumer = null;
@@ -189,13 +209,12 @@ public final class VMRuntime {
     }
 
     /**
-     * Returns the object that represents the VM instance's Dalvik-specific
-     * runtime environment.
-     *
+     * Returns the object that represents the current runtime.
      * @return the runtime object
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = CorePlatformApi.Status.STABLE)
+    @libcore.api.IntraCoreApi
     public static VMRuntime getRuntime() {
         return THE_ONE;
     }
@@ -223,30 +242,39 @@ public final class VMRuntime {
 
     /**
      * Returns the name of the shared library providing the VM implementation.
+     *
+     * @return the name of the shared library providing the VM implementation.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native String vmLibrary();
 
     /**
      * Returns the VM's instruction set.
+     *
+     * @return the VM's instruction set.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native String vmInstructionSet();
 
     /**
      * Returns whether the VM is running in 64-bit mode.
+     *
+     * @return true if VM is running in 64-bit mode, false otherwise.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = CorePlatformApi.Status.STABLE)
     @FastNative
     public native boolean is64Bit();
 
     /**
      * Returns whether the VM is running with JNI checking enabled.
+     *
+     * @return true if the VM is running with JNI checking enabled,
+     *         and false otherwise.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     @FastNative
     public native boolean isCheckJniEnabled();
 
@@ -258,7 +286,6 @@ public final class VMRuntime {
      *
      * @return the current ideal heap utilization
      */
-    @libcore.api.CorePlatformApi
     public native float getTargetHeapUtilization();
 
     /**
@@ -282,7 +309,6 @@ public final class VMRuntime {
      * @throws IllegalArgumentException if newTarget is &lt;= 0.0 or &gt;= 1.0
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
     public float setTargetHeapUtilization(float newTarget) {
         if (newTarget <= 0.0f || newTarget >= 1.0f) {
             throw new IllegalArgumentException(newTarget + " out of range (0,1)");
@@ -305,10 +331,12 @@ public final class VMRuntime {
      * Sets the target SDK version. Should only be called before the
      * app starts to run, because it may change the VM's behavior in
      * dangerous ways. Defaults to {@link #SDK_VERSION_CUR_DEVELOPMENT}.
+     *
+     * @param targetSdkVersion the SDK version the app wants to run with.
      */
     @UnsupportedAppUsage(maxTargetSdk=0, publicAlternatives="Use the {@code targetSdkVersion}"
         +" attribute in the {@code uses-sdk} manifest tag instead.")
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public synchronized void setTargetSdkVersion(int targetSdkVersion) {
         this.targetSdkVersion = targetSdkVersion;
         setTargetSdkVersionNative(this.targetSdkVersion);
@@ -319,8 +347,10 @@ public final class VMRuntime {
      * Sets the disabled compat changes. Should only be called before the
      * app starts to run, because it may change the VM's behavior in
      * dangerous ways. Defaults to empty.
+     *
+     * @param disabledCompatChanges An array of ChangeIds that we want to disable.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public synchronized void setDisabledCompatChanges(long[] disabledCompatChanges) {
         this.disabledCompatChanges = disabledCompatChanges;
         setDisabledCompatChangesNative(this.disabledCompatChanges);
@@ -329,8 +359,10 @@ public final class VMRuntime {
     /**
      * Gets the target SDK version. See {@link #setTargetSdkVersion} for
      * special values.
+     *
+     * @return the target SDK version.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public synchronized int getTargetSdkVersion() {
         return targetSdkVersion;
     }
@@ -413,20 +445,6 @@ public final class VMRuntime {
     }
 
     /**
-     * Tells the VM to enable the JIT compiler. If the VM does not have a JIT
-     * implementation, calling this method should have no effect.
-     */
-    @libcore.api.CorePlatformApi
-    public native void startJitCompilation();
-
-    /**
-     * Tells the VM to disable the JIT compiler. If the VM does not have a JIT
-     * implementation, calling this method should have no effect.
-     */
-    @libcore.api.CorePlatformApi
-    public native void disableJitCompilation();
-
-    /**
      * Sets the list of exemptions from hidden API access enforcement.
      *
      * @param signaturePrefixes
@@ -434,7 +452,7 @@ public final class VMRuntime {
      *         signature of a blacklisted API. All matching APIs are treated as if they were on
      *         the whitelist: access permitted, and no logging..
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void setHiddenApiExemptions(String[] signaturePrefixes);
 
     /**
@@ -443,34 +461,48 @@ public final class VMRuntime {
      * @param rate Proportion of hidden API accesses that will be logged; an integer between
      *                0 and 0x10000 inclusive.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void setHiddenApiAccessLogSamplingRate(int rate);
 
     /**
      * Returns an array allocated in an area of the Java heap where it will never be moved.
      * This is used to implement native allocations on the Java heap, such as DirectByteBuffers
      * and Bitmaps.
+     *
+     * @param componentType the component type of the returned array.
+     * @param length the length of the returned array.
+     * @return array allocated in an area of the heap where it will never be moved.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+    @libcore.api.IntraCoreApi
     @FastNative
     public native Object newNonMovableArray(Class<?> componentType, int length);
 
     /**
-     * Returns an array of at least minLength, but potentially larger. The increased size comes from
-     * avoiding any padding after the array. The amount of padding varies depending on the
-     * componentType and the memory allocator implementation.
+     * Returns an array of at least {@code minLength}, but potentially larger. The increased size
+     * comes from avoiding any padding after the array. The amount of padding varies depending on
+     * the componentType and the memory allocator implementation.
+     *
+     * @param componentType the component type of the returned array.
+     * @param minLength     the minimum length of the returned array. The actual length could
+     *                      be greater.
+     * @return              array of at least of {@code minLength}
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     @FastNative
     public native Object newUnpaddedArray(Class<?> componentType, int minLength);
 
     /**
-     * Returns the address of array[0]. This differs from using JNI in that JNI might lie and
-     * give you the address of a copy of the array when in forcecopy mode.
+     * Returns the address of {@code array[0]}. This differs from using JNI in that JNI
+     * might lie and give you the address of a copy of the array when in forcecopy mode.
+     *
+     * @param array the object we want the native address of.
+     * @return native address of {@code array[0]}.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+    @libcore.api.IntraCoreApi
     @FastNative
     public native long addressOf(Object array);
 
@@ -479,20 +511,22 @@ public final class VMRuntime {
      * up to the maximum heap size.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void clearGrowthLimit();
 
     /**
      * Make the current growth limit the new non growth limit capacity by releasing pages which
      * are after the growth limit but before the non growth limit capacity.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void clampGrowthLimit();
 
     /**
      * Returns true if native debugging is on.
+     *
+     * @return true if native debugging is on, false otherwise.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     @FastNative
     public native boolean isNativeDebuggable();
 
@@ -510,37 +544,45 @@ public final class VMRuntime {
      * from excessively increasing. Memory allocated via system malloc() should not be included
      * in this count. The argument must be the same as that later passed to registerNativeFree(),
      * but may otherwise be approximate.
+     *
+     * @param bytes the number of bytes of the native object.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void registerNativeAllocation(long bytes);
 
     /**
-     * Backward compatibility version of registerNativeAllocation. We used to pass an int instead
-     * of a long. The RenderScript support library looks it up via reflection.
-     * @deprecated Use long argument instead.
+     * Backward compatibility version of {@link #registerNativeAllocation(long)}. We used to pass
+     * an int instead of a long. The RenderScript support library looks it up via reflection.
+     * @deprecated Use {@link #registerNativeAllocation(long)} instead.
+     *
+     * @param bytes the number of bytes of the native object.
      */
     @UnsupportedAppUsage
     @Deprecated
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public void registerNativeAllocation(int bytes) {
         registerNativeAllocation((long) bytes);
     }
 
     /**
      * Registers a native free by reducing the number of native bytes accounted for.
+     *
+     * @param bytes the number of bytes of the freed object.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void registerNativeFree(long bytes);
 
     /**
-     * Backward compatibility version of registerNativeFree.
-     * @deprecated Use long argument instead.
+     * Backward compatibility version of {@link #registerNativeFree(long)}.
+     * @deprecated Use {@link #registerNativeFree(long)} instead.
+     *
+     * @param bytes the number of bytes of the freed object.
      */
     @UnsupportedAppUsage
     @Deprecated
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public void registerNativeFree(int bytes) {
         registerNativeFree((long) bytes);
     }
@@ -604,9 +646,12 @@ public final class VMRuntime {
         }
     }
 
-    @libcore.api.CorePlatformApi
+    /**
+     * Request that a garbage collection gets started on a different thread.
+     */
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void requestConcurrentGC();
-    public native void concurrentGC();
+
     public native void requestHeapTrim();
     public native void trimHeap();
     public native void startHeapTaskProcessor();
@@ -616,31 +661,70 @@ public final class VMRuntime {
     /**
      * Let the heap know of the new process state. This can change allocation and garbage collection
      * behavior regarding trimming and compaction.
+     *
+     * @param state The state of the process, as defined in art/runtime/process_state.h.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void updateProcessState(int state);
 
     /**
      * Let the runtime know that the application startup is completed. This may affect behavior
      * related to profiling and startup caches.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void notifyStartupCompleted();
 
     /**
      * Fill in dex caches with classes, fields, and methods that are
      * already loaded. Typically used after Zygote preloading.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public native void preloadDexCaches();
 
     /**
-     * Register application info.
-     * @param profileFile the path of the file where the profile information should be stored.
-     * @param codePaths the code paths that should be profiled.
+     * Flag denoting that the code paths passed to
+     * {@link #registerAppInfo(String, String, String, String[], int, boolean)}
+     * contains the app primary APK.
      */
-    @libcore.api.CorePlatformApi
-    public static native void registerAppInfo(String profileFile, String[] codePaths);
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+    public static final int CODE_PATH_TYPE_PRIMARY_APK = 1 << 0;
+    /**
+     * Flag denoting that the code paths passed to
+     * {@link #registerAppInfo(String, String, String, String[], int, boolean)}
+     * contains the a split APK.
+     */
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+    public static final int CODE_PATH_TYPE_SPLIT_APK = 1 << 1;
+    /**
+     * Flag denoting that the code paths passed to
+     * {@link #registerAppInfo(String, String, String, String[], int, boolean)}
+     * contains a secondary dex file (dynamically loaded by the app).
+     */
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+    public static final int CODE_PATH_TYPE_SECONDARY_DEX = 1 << 2;
+
+    /**
+     * Register application info to ART.
+     * This enables ART to support certain low level features (such as profiling) and provide
+     * better debug information. The method should be called after the application loads its
+     * apks or dex files.
+     *
+     * @param packageName the name of the package being ran.
+     * @param currentProfileFile the path of the file where the profile information for the current
+     *        execution should be stored.
+     * @param referenceProfileFile the path of the file where the reference profile information
+     *        (for past executions) is stored.
+     * @param appCodePaths the code paths (apk/dex files) of the applications that were loaded.
+     *        These paths will also be profiled.
+     * @param codePathsTypes the type of the code paths.
+     */
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
+    public static native void registerAppInfo(
+            String packageName,
+            String currentProfileFile,
+            String referenceProfileFile,
+            String[] appCodePaths,
+            int codePathsType);
 
     /**
      * Returns the runtime instruction set corresponding to a given ABI. Multiple
@@ -648,9 +732,11 @@ public final class VMRuntime {
      * {@code armeabi-v7a} and {@code armeabi} might map to the instruction set {@code arm}.
      *
      * This influences the compilation of the applications classes.
+     *
+     * @param abi The ABI we want the instruction set from.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static String getInstructionSet(String abi) {
         final String instructionSet = ABI_TO_INSTRUCTION_SET_MAP.get(abi);
         if (instructionSet == null) {
@@ -660,51 +746,44 @@ public final class VMRuntime {
         return instructionSet;
     }
 
-    @libcore.api.CorePlatformApi
+    /**
+     * Returns whether the given {@code instructionSet} is 64 bits.
+     *
+     * @param instructionSet a string representing an instruction set.
+     *
+     * @return true if given {@code instructionSet} is 64 bits, false otherwise.
+     */
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static boolean is64BitInstructionSet(String instructionSet) {
         return "arm64".equals(instructionSet) ||
                 "x86_64".equals(instructionSet) ||
                 "mips64".equals(instructionSet);
     }
 
+    /**
+     * Returns whether the given {@code abi} is 64 bits.
+     *
+     * @param abi a string representing an ABI.
+     *
+     * @return true if given {@code abi} is 64 bits, false otherwise.
+     */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static boolean is64BitAbi(String abi) {
         return is64BitInstructionSet(getInstructionSet(abi));
     }
-
-    /**
-     * Prevent initialization of the caller's class if they are calling
-     * from their clinit method. This works because calling a JNI method
-     * from clinit causes the transactional runtime to abort the current
-     * transaction.
-     * @hide
-     */
-    @CriticalNative
-    public static native void doNotInitializeInAot();
 
     /**
      * Return false if the boot class path for the given instruction
      * set mapped from disk storage, versus being interpretted from
      * dirty pages in memory.
      */
-    @libcore.api.CorePlatformApi
     public static native boolean isBootClassPathOnDisk(String instructionSet);
-
-    /**
-     * Returns whether the runtime is using a boot image.
-     *
-     * <p>While isBootClassPathOnDisk checks for the existence of an image file on disk,
-     * this method queries the runtime whether it is <em>using</em> an image.
-     */
-    @libcore.api.CorePlatformApi
-    @FastNative
-    public static native boolean hasBootImageSpaces();
 
     /**
      * Used to notify the runtime that boot completed.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native void bootCompleted();
 
     /**
@@ -712,29 +791,23 @@ public final class VMRuntime {
      * profiling configuration to avoid samples during class preloading. This helps avoid
      * the regression from disabling class profiling.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native void resetJitCounters();
 
     /**
      * Returns the instruction set of the current runtime.
+     *
+     * @return instruction set of the current runtime.
      */
     @UnsupportedAppUsage
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native String getCurrentInstructionSet();
-
-    /**
-     * Return true if the dalvik cache was pruned when booting. This may have happened for
-     * various reasons, e.g., after an OTA. The return value is for the current instruction
-     * set.
-     */
-    @libcore.api.CorePlatformApi
-    public static native boolean didPruneDalvikCache();
 
     /**
      * Register the current execution thread to the runtime as sensitive thread.
      * Should be called just once. Subsequent calls are ignored.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native void registerSensitiveThread();
 
     /**
@@ -744,30 +817,38 @@ public final class VMRuntime {
 
     /**
      * Sets a callback that the runtime can call whenever a usage of a non SDK API is detected.
+     *
+     * @param consumer an object implementing the {@code java.util.function.Consumer} interface that
+     *      the runtime will call whenever a usage of a non SDK API is detected.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static void setNonSdkApiUsageConsumer(Consumer<String> consumer) {
         nonSdkApiUsageConsumer = consumer;
     }
 
     /**
      * Sets whether or not the runtime should dedupe detection and warnings for hidden API usage.
-     * If deduping is enabled, only the first usage of each API will be detected. The default
-     * behaviour is to dedupe.
+     *
+     * @param dedupe if set, only the first usage of each API will be detected. The default
+     *      behaviour is to dedupe.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native void setDedupeHiddenApiWarnings(boolean dedupe);
 
     /**
      * Sets the package name of the app running in this process.
+     *
+     * @param packageName the value being set
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native void setProcessPackageName(String packageName);
 
     /**
      * Sets the full path to data directory of the app running in this process.
+     *
+     * @param dataDir the value being set
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native void setProcessDataDirectory(String dataDir);
 
     /**
@@ -775,9 +856,11 @@ public final class VMRuntime {
      * A class loader context is an internal opaque format used by the runtime to encode the
      * class loader hierarchy (including each ClassLoader's classpath) used to load a dex file.
      *
-     * @return True if encodedClassLoaderContext is a non-null valid encoded class loader context.
-     *   Throws NullPointerException if encodedClassLoaderContext is null.
+     * @param encodedClassLoaderContext the class loader context to analyze
+     * @throws NullPointerException if {@code encodedClassLoaderContext is null.
+     * @return {@code true} if {@code encodedClassLoaderContext} is a non-null valid encoded class
+     *         loader context.
      */
-    @libcore.api.CorePlatformApi
+    @libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
     public static native boolean isValidClassLoaderContext(String encodedClassLoaderContext);
 }

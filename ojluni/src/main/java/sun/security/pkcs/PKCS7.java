@@ -61,6 +61,8 @@ import sun.security.x509.X500Name;
  *
  * @author Benjamin Renaud
  */
+// Android-added: stable CorePlatformAPI
+@libcore.api.CorePlatformApi(status = libcore.api.CorePlatformApi.Status.STABLE)
 public class PKCS7 {
 
     private ObjectIdentifier contentType;
@@ -113,9 +115,10 @@ public class PKCS7 {
      * encoded bytes from the InputStream.
      *
      * @param in an input stream holding at least one PKCS7 block.
-     * @exception ParsingException on parsing errors.
-     * @exception IOException on other errors.
+     * @throws ParsingException on parsing errors.
+     * @throws IOException on other errors.
      */
+
     public PKCS7(InputStream in) throws ParsingException, IOException {
         DataInputStream dis = new DataInputStream(in);
         byte[] data = new byte[dis.available()];
@@ -142,6 +145,7 @@ public class PKCS7 {
      * @param bytes the encoded bytes.
      * @exception ParsingException on parsing errors.
      */
+
     public PKCS7(byte[] bytes) throws ParsingException {
         try {
             DerInputStream derin = new DerInputStream(bytes);
@@ -614,6 +618,7 @@ public class PKCS7 {
      * @exception NoSuchAlgorithmException on unrecognized algorithms.
      * @exception SignatureException on signature handling errors.
      */
+
     public SignerInfo verify(SignerInfo info, InputStream dataInputStream)
     throws NoSuchAlgorithmException, SignatureException, IOException {
         return info.verify(this, dataInputStream);
@@ -628,6 +633,7 @@ public class PKCS7 {
      * @exception NoSuchAlgorithmException on unrecognized algorithms.
      * @exception SignatureException on signature handling errors.
      */
+
     public SignerInfo[] verify(byte[] bytes)
     throws NoSuchAlgorithmException, SignatureException {
 
@@ -689,6 +695,7 @@ public class PKCS7 {
      * @return a clone of the array of X.509 certificates or null if
      *         none are specified for the content type.
      */
+
     public X509Certificate[] getCertificates() {
         if (certificates != null)
             return certificates.clone();
@@ -713,6 +720,7 @@ public class PKCS7 {
      * @return the array of Signer Infos or null if none are specified
      *         for the content type.
      */
+
     public SignerInfo[] getSignerInfos() {
         return signerInfos;
     }
