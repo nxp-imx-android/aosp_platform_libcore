@@ -319,16 +319,12 @@ public class TimeZoneTest extends TestCase {
     }
 
     // http://b/7955614
-    public void testApia() {
+    public void testApia() throws Exception {
         TimeZone tz = TimeZone.getTimeZone("Pacific/Apia");
         assertEquals("Apia Daylight Time", tz.getDisplayName(true, TimeZone.LONG, Locale.US));
         assertEquals("Apia Standard Time", tz.getDisplayName(false, TimeZone.LONG, Locale.US));
-
-        long samoaStandardTime = 1630315635000L; // 30 Aug 2021
-        long samoaDst = 1614504435000L; // 28 Feb 2021
-
-        assertEquals(13 * 60 * 60 * 1_000, tz.getOffset(samoaStandardTime));
-        assertEquals(14 * 60 * 60 * 1_000, tz.getOffset(samoaDst));
+        assertEquals("GMT+14:00", tz.getDisplayName(true, TimeZone.SHORT, Locale.US));
+        assertEquals("GMT+13:00", tz.getDisplayName(false, TimeZone.SHORT, Locale.US));
     }
 
     private static boolean isGmtString(String s) {
