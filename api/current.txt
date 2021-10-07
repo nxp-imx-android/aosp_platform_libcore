@@ -12702,6 +12702,7 @@ package java.util {
     method @NonNull public default java.util.stream.Stream<E> stream();
     method @NonNull public Object[] toArray();
     method @NonNull public <T> T[] toArray(@NonNull T[]);
+    method @NonNull public default <T> T[] toArray(@NonNull java.util.function.IntFunction<T[]>);
   }
 
   public class Collections {
@@ -15817,7 +15818,11 @@ package java.util.concurrent.locks {
     method public java.util.concurrent.locks.ReadWriteLock asReadWriteLock();
     method public java.util.concurrent.locks.Lock asWriteLock();
     method public int getReadLockCount();
+    method public static boolean isLockStamp(long);
+    method public static boolean isOptimisticReadStamp(long);
+    method public static boolean isReadLockStamp(long);
     method public boolean isReadLocked();
+    method public static boolean isWriteLockStamp(long);
     method public boolean isWriteLocked();
     method public long readLock();
     method public long readLockInterruptibly() throws java.lang.InterruptedException;
@@ -16106,6 +16111,7 @@ package java.util.jar {
     method public java.util.jar.Attributes getAttributes() throws java.io.IOException;
     method public java.security.cert.Certificate[] getCertificates();
     method public java.security.CodeSigner[] getCodeSigners();
+    method public String getRealName();
     field public static final int CENATT = 36; // 0x24
     field public static final int CENATX = 38; // 0x26
     field public static final int CENCOM = 32; // 0x20
