@@ -85,6 +85,36 @@ public final class Unsafe {
     }
 
     /**
+     * Reports the location of the field with a given name in the storage
+     * allocation of its class.
+     *
+     * @throws NullPointerException if any parameter is {@code null}.
+     * @throws InternalError if there is no field named {@code name} declared
+     *         in class {@code c}, i.e., if {@code c.getDeclaredField(name)}
+     *         would throw {@code java.lang.NoSuchFieldException}.
+     *
+     * @see #objectFieldOffset(Field)
+     */
+    public long objectFieldOffset(Class<?> c, String name) {
+        if (c == null || name == null) {
+            throw new NullPointerException();
+        }
+
+        Field field = null;
+        Field[] fields = c.getDeclaredFields();
+        for (Field f : fields) {
+            if (f.getName().equals(name)) {
+                field = f;
+                break;
+            }
+        }
+        if (field == null) {
+            throw new InternalError();
+        }
+        return objectFieldOffset(field);
+    }
+
+    /**
      * Gets the offset from the start of an array object's memory to
      * the memory used to store its initial (zeroeth) element.
      *
@@ -683,6 +713,50 @@ public final class Unsafe {
     @FastNative
     public native void copyMemory(long srcAddr, long dstAddr, long bytes);
 
+    /**
+     * Atomically updates Java variable to {@code x} if it is currently
+     * holding {@code expected}.
+     *
+     * <p>This operation has memory semantics of a {@code volatile} read
+     * and write.  Corresponds to C11 atomic_compare_exchange_strong.
+     *
+     * @return {@code true} if successful
+     */
+    // @HotSpotIntrinsicCandidate
+    @FastNative
+    public final native boolean compareAndSetInt(Object o, long offset,
+                                                 int expected,
+                                                 int x);
+
+    /**
+     * Atomically updates Java variable to {@code x} if it is currently
+     * holding {@code expected}.
+     *
+     * <p>This operation has memory semantics of a {@code volatile} read
+     * and write.  Corresponds to C11 atomic_compare_exchange_strong.
+     *
+     * @return {@code true} if successful
+     */
+    // @HotSpotIntrinsicCandidate
+    @FastNative
+    public final native boolean compareAndSetLong(Object o, long offset,
+                                                  long expected,
+                                                  long x);
+
+    /**
+     * Atomically updates Java variable to {@code x} if it is currently
+     * holding {@code expected}.
+     *
+     * <p>This operation has memory semantics of a {@code volatile} read
+     * and write.  Corresponds to C11 atomic_compare_exchange_strong.
+     *
+     * @return {@code true} if successful
+     */
+    // @HotSpotIntrinsicCandidate
+    @FastNative
+    public final native boolean compareAndSetObject(Object o, long offset,
+                                                    Object expected,
+                                                    Object x);
 
     // The following contain CAS-based Java implementations used on
     // platforms not supporting native instructions
@@ -787,6 +861,41 @@ public final class Unsafe {
         return v;
     }
 
+    /** Release version of {@link #putIntVolatile(Object, long, int)} */
+    // @HotSpotIntrinsicCandidate
+    public final void putIntRelease(Object o, long offset, int x) {
+        putIntVolatile(o, offset, x);
+    }
+
+    /** Acquire version of {@link #getIntVolatile(Object, long)} */
+    // @HotSpotIntrinsicCandidate
+    public final int getIntAcquire(Object o, long offset) {
+        return getIntVolatile(o, offset);
+    }
+
+    /** Release version of {@link #putLongVolatile(Object, long, long)} */
+    // @HotSpotIntrinsicCandidate
+    public final void putLongRelease(Object o, long offset, long x) {
+        putLongVolatile(o, offset, x);
+    }
+
+    /** Acquire version of {@link #getLongVolatile(Object, long)} */
+    // @HotSpotIntrinsicCandidate
+    public final long getLongAcquire(Object o, long offset) {
+        return getLongVolatile(o, offset);
+    }
+
+    /** Release version of {@link #putObjectVolatile(Object, long, Object)} */
+    // @HotSpotIntrinsicCandidate
+    public final void putObjectRelease(Object o, long offset, Object x) {
+        putObjectVolatile(o, offset, x);
+    }
+
+    /** Acquire version of {@link #getObjectVolatile(Object, long)} */
+    // @HotSpotIntrinsicCandidate
+    public final Object getObjectAcquire(Object o, long offset) {
+        return getObjectVolatile(o, offset);
+    }
 
     /**
      * Ensures that loads before the fence will not be reordered with loads and
@@ -832,4 +941,27 @@ public final class Unsafe {
     // @HotSpotIntrinsicCandidate
     @FastNative
     public native void fullFence();
+
+    /**
+     * Ensures the given class has been initialized. This is often
+     * needed in conjunction with obtaining the static field base of a
+     * class.
+     */
+    public void ensureClassInitialized(Class<?> c) {
+        if (c == null) {
+            throw new NullPointerException();
+        }
+
+        // Android-changed: Implementation not yet available natively (b/202380950)
+        // ensureClassInitialized0(c);
+        try {
+            Class.forName(c.getName(), true, c.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            // The function doesn't specify that it's throwing ClassNotFoundException, so it needs
+            // to be caught here. We could rethrow as NoClassDefFoundError, however that is not
+            // documented for this function and the upstream implementation does not throw an
+            // exception.
+        }
+    }
+
 }
