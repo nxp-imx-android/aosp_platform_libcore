@@ -3616,7 +3616,7 @@ package java.lang {
     method public void checkExit(int);
     method public void checkLink(String);
     method public void checkListen(int);
-    method public void checkMemberAccess(Class<?>, int);
+    method @Deprecated public void checkMemberAccess(Class<?>, int);
     method public void checkMulticast(java.net.InetAddress);
     method @Deprecated public void checkMulticast(java.net.InetAddress, byte);
     method public void checkPackageAccess(String);
@@ -3632,7 +3632,7 @@ package java.lang {
     method public void checkSecurityAccess(String);
     method public void checkSetFactory();
     method public void checkSystemClipboardAccess();
-    method public boolean checkTopLevelWindow(Object);
+    method @Deprecated public boolean checkTopLevelWindow(Object);
     method public void checkWrite(java.io.FileDescriptor);
     method public void checkWrite(String);
     method @Deprecated protected int classDepth(String);
@@ -3811,6 +3811,7 @@ package java.lang {
     method public int indexOf(@NonNull String);
     method public int indexOf(@NonNull String, int);
     method @NonNull public String intern();
+    method public boolean isBlank();
     method public boolean isEmpty();
     method @NonNull public static String join(@NonNull CharSequence, @Nullable java.lang.CharSequence...);
     method @NonNull public static String join(@NonNull CharSequence, @NonNull Iterable<? extends java.lang.CharSequence>);
@@ -3819,10 +3820,12 @@ package java.lang {
     method public int lastIndexOf(@NonNull String);
     method public int lastIndexOf(@NonNull String, int);
     method public int length();
+    method @NonNull public java.util.stream.Stream<java.lang.String> lines();
     method public boolean matches(@NonNull String);
     method public int offsetByCodePoints(int, int);
     method public boolean regionMatches(int, @NonNull String, int, int);
     method public boolean regionMatches(boolean, int, @NonNull String, int, int);
+    method @NonNull public String repeat(int);
     method @NonNull public String replace(char, char);
     method @NonNull public String replace(@NonNull CharSequence, @NonNull CharSequence);
     method @NonNull public String replaceAll(@NonNull String, @NonNull String);
@@ -3831,6 +3834,9 @@ package java.lang {
     method @NonNull public String[] split(@NonNull String);
     method public boolean startsWith(@NonNull String, int);
     method public boolean startsWith(@NonNull String);
+    method @NonNull public String strip();
+    method @NonNull public String stripLeading();
+    method @NonNull public String stripTrailing();
     method @NonNull public CharSequence subSequence(int, int);
     method @NonNull public String substring(int);
     method @NonNull public String substring(int, int);
@@ -4339,6 +4345,7 @@ package java.lang.invoke {
     method public static java.lang.invoke.MethodHandle invoker(java.lang.invoke.MethodType);
     method public static java.lang.invoke.MethodHandles.Lookup lookup();
     method public static java.lang.invoke.MethodHandle permuteArguments(java.lang.invoke.MethodHandle, java.lang.invoke.MethodType, int...);
+    method public static java.lang.invoke.MethodHandles.Lookup privateLookupIn(Class<?>, java.lang.invoke.MethodHandles.Lookup) throws java.lang.IllegalAccessException;
     method public static java.lang.invoke.MethodHandles.Lookup publicLookup();
     method public static <T extends java.lang.reflect.Member> T reflectAs(Class<T>, java.lang.invoke.MethodHandle);
     method public static java.lang.invoke.MethodHandle spreadInvoker(java.lang.invoke.MethodType, int);
@@ -6187,8 +6194,10 @@ package java.nio.channels {
     method public static java.io.OutputStream newOutputStream(java.nio.channels.AsynchronousByteChannel);
     method public static java.io.Reader newReader(java.nio.channels.ReadableByteChannel, java.nio.charset.CharsetDecoder, int);
     method public static java.io.Reader newReader(java.nio.channels.ReadableByteChannel, String);
+    method public static java.io.Reader newReader(java.nio.channels.ReadableByteChannel, java.nio.charset.Charset);
     method public static java.io.Writer newWriter(java.nio.channels.WritableByteChannel, java.nio.charset.CharsetEncoder, int);
     method public static java.io.Writer newWriter(java.nio.channels.WritableByteChannel, String);
+    method public static java.io.Writer newWriter(java.nio.channels.WritableByteChannel, java.nio.charset.Charset);
   }
 
   public class ClosedByInterruptException extends java.nio.channels.AsynchronousCloseException {
