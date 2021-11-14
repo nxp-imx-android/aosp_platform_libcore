@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Read the EXPECTED_UPSTREAM and update the files from the upstream."""
-
+import argparse
 import logging
 # pylint: disable=g-importing-member
 from pathlib import Path
 import sys
 from typing import List
+from typing import Sequence
 
 # pylint: disable=g-multiple-import
 from common_util import (
@@ -93,7 +94,7 @@ MSG_FIRST_COMMIT = ("Import {summary} from {ref}\n"
                     "Test: N/A")
 
 MSG_SECOND_COMMIT = ("Merge {summary} from {ref} into the "
-                     " expected_upstream branch\n"
+                     "expected_upstream branch\n"
                      "\n"
                      "List of files:\n"
                      "  {files}\n"
@@ -104,7 +105,7 @@ MSG_SECOND_COMMIT = ("Merge {summary} from {ref} into the "
 
 
 def merge_files_and_create_commit(entry_set: List[ExpectedUpstreamEntry],
-                                  repo: Repo) -> None:
+                                  repo: Repo, checkout_only: bool) -> None:
   r"""Create the commits importing the given files into the current branch.
 
   `--------<ref>---------------   aosp/upstream_openjdkXXX
@@ -144,13 +145,14 @@ def merge_files_and_create_commit(entry_set: List[ExpectedUpstreamEntry],
   Args:
     entry_set: a list of entries
     repo: the repository object
+    checkout_only: True if it creates no commit
   """
   ref = entry_set[0].git_ref
   upstream_commit = repo.commit(ref)
 
-  # We need an index empty initially, i.e. no staged files.
-  # Note that the empty commit is not the parent. The parents can be set later.
-  first_index = IndexFile.from_tree(repo, repo.commit(EMPTY_COMMIT_SHA))
+  dst_paths = [e.dst_path for e in entry_set]
+  str_dst_paths = "\n  ".join(dst_paths)
+
   for entry in entry_set:
     src_blob = upstream_commit.tree[entry.src_path]
     # Write into the file system directly because GitPython provides no API
@@ -159,50 +161,59 @@ def merge_files_and_create_commit(entry_set: List[ExpectedUpstreamEntry],
     # However, it's fine, because we later reset the HEAD to the second commit.
     # The user expects the file showing in the file system, and the file is
     # not staged/untracked because the file is in the second commit too.
-    Path(entry.dst_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(entry.dst_path, "wb") as file:
+    absolute_dst_path = Path(LIBCORE_DIR, entry.dst_path)
+    absolute_dst_path.parent.mkdir(parents=True, exist_ok=True)
+    with absolute_dst_path.open("wb") as file:
       file.write(src_blob.data_stream.read())
-    first_index.add(entry.dst_path)
 
-  dst_paths = [e.dst_path for e in entry_set]
-  str_dst_paths = "\n  ".join(dst_paths)
-  summary_msg = "files"
-  if len(entry_set) == 1:
-    summary_msg = Path(entry_set[0].dst_path).stem
-  msg = MSG_FIRST_COMMIT.format(
-      summary=summary_msg, ref=ref, files=str_dst_paths)
+  if not checkout_only:
+    # We need an index empty initially, i.e. no staged files. Note that the
+    # empty commit is not the parent. The parents can be set later.
+    first_index = IndexFile.from_tree(repo, repo.commit(EMPTY_COMMIT_SHA))
+    for entry in entry_set:
+      first_index.add(entry.dst_path)
 
-  first_commit = first_index.commit(
-      message=msg, parent_commits=[upstream_commit], head=False)
+    summary_msg = "files"
+    if len(entry_set) == 1:
+      summary_msg = Path(entry_set[0].dst_path).stem
+    msg = MSG_FIRST_COMMIT.format(
+        summary=summary_msg, ref=ref, files=str_dst_paths)
 
-  # The second commit is a merge commit. It doesn't use the current index,
-  # i.e. repo.index, to avoid affecting the current staged files.
-  prev_head = repo.active_branch.commit
-  second_index = IndexFile.from_tree(repo, prev_head)
-  blob_filter = lambda obj, i: isinstance(obj, Blob)
-  blobs = first_commit.tree.traverse(blob_filter)
-  second_index.add(blobs)
-  msg = MSG_SECOND_COMMIT.format(
-      summary=summary_msg, ref=ref, files=str_dst_paths)
-  second_commit = second_index.commit(
-      message=msg, parent_commits=[prev_head, first_commit], head=True)
+    first_commit = first_index.commit(
+        message=msg, parent_commits=[upstream_commit], head=False)
 
-  # We updated the HEAD to the second commit. Thus, git-reset updates the
-  # current index. Otherwise, the current index, aka, repo.index, shows that
-  # the files are deleted.
-  repo.index.reset(paths=dst_paths)
+    # The second commit is a merge commit. It doesn't use the current index,
+    # i.e. repo.index, to avoid affecting the current staged files.
+    prev_head = repo.active_branch.commit
+    second_index = IndexFile.from_tree(repo, prev_head)
+    blob_filter = lambda obj, i: isinstance(obj, Blob)
+    blobs = first_commit.tree.traverse(blob_filter)
+    second_index.add(blobs)
+    msg = MSG_SECOND_COMMIT.format(
+        summary=summary_msg, ref=ref, files=str_dst_paths)
+    second_commit = second_index.commit(
+        message=msg, parent_commits=[prev_head, first_commit], head=True)
 
-  print(f"New merge commit {second_commit} contains:")
+    # We updated the HEAD to the second commit. Thus, git-reset updates the
+    # current index. Otherwise, the current index, aka, repo.index, shows that
+    # the files are deleted.
+    repo.index.reset()
+
+  if checkout_only:
+    print(f"Checked out the following files from {ref}:")
+  else:
+    print(f"New merge commit {second_commit} contains:")
   print(f"  {str_dst_paths}")
 
 
-def create_commits(repo: Repo) -> None:
+def create_commits(repo: Repo, checkout_only: bool) -> None:
   """Create the commits importing files according to the EXPECTED_UPSTREAM."""
   current_tracking_branch = repo.active_branch.tracking_branch()
   if current_tracking_branch.name != "aosp/expected_upstream":
     print("This script should only run on aosp/expected_upstream branch. "
           f"Currently, this is on branch {repo.active_branch} "
           f"tracking {current_tracking_branch}")
+    return
 
   print("Reading EXPECTED_UPSTREAM file...")
   expected_upstream_entries = ExpectedUpstreamFile().read_all_entries()
@@ -221,16 +232,28 @@ def create_commits(repo: Repo) -> None:
   entry_sets_to_be_merged = partition_entries_by_ref(outdated_entries)
 
   for entry_set in entry_sets_to_be_merged:
-    merge_files_and_create_commit(entry_set, repo)
+    merge_files_and_create_commit(entry_set, repo, checkout_only)
 
 
-def main():
+def main(argv: Sequence[str]) -> None:
+  arg_parser = argparse.ArgumentParser(
+      description="Read the EXPECTED_UPSTREAM and update the files from the "
+                  "OpenJDK. By default, it creates commits forking from "
+                  "the upstream version in order to preserve the line history.")
+  arg_parser.add_argument(
+      "--checkout-only", action="store_true",
+      help="Checkout the files, but creates no commits")
+
+  args = arg_parser.parse_args(argv)
+
+  checkout_only = args.checkout_only
+
   repo = Repo(LIBCORE_DIR.as_posix())
   try:
-    create_commits(repo)
+    create_commits(repo, checkout_only)
   finally:
     repo.close()
 
 
 if __name__ == "__main__":
-  main()
+  main(sys.argv[1:])
