@@ -23,6 +23,7 @@
 package test.java.nio.channels.Channels;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -34,7 +35,6 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -50,7 +50,8 @@ public class EncodingTest {
     static final int ITERATIONS = 2;
     public static final String CS_UTF8 = StandardCharsets.UTF_8.name();
     public static final String CS_ISO8859 = StandardCharsets.ISO_8859_1.name();
-    static String USER_DIR = System.getProperty("user.dir", ".");
+    // Android-removed: Using temp file instead of user.dir
+    // static String USER_DIR = System.getProperty("user.dir", ".");
 
     // malformed input: a high surrogate without the low surrogate
     static char[] illChars = {
@@ -74,10 +75,27 @@ public class EncodingTest {
         }
     }
 
-    String testFile = Paths.get(USER_DIR, "channelsEncodingTest.txt").toString();
-    String testIllegalInput = Paths.get(USER_DIR, "channelsIllegalInputTest.txt").toString();
-    String testIllegalOutput = Paths.get(USER_DIR, "channelsIllegalOutputTest.txt").toString();
+    // BEGIN Android-changed: Using temp file instead of user.dir
+    // String testFile = Paths.get(USER_DIR, "channelsEncodingTest.txt").toString();
+    // String testIllegalInput = Paths.get(USER_DIR, "channelsIllegalInputTest.txt").toString();
+    // String testIllegalOutput = Paths.get(USER_DIR, "channelsIllegalOutputTest.txt").toString();
+    private final String testFile;
+    private final String testIllegalInput;
+    private final String testIllegalOutput;
 
+    private final File testFileHandle;
+    private final File testIllegalInputHandle;
+    private final File testIllegalOutputHandle;
+
+    public EncodingTest() throws IOException {
+        testFileHandle = File.createTempFile("channelsEncodingTest", "txt");
+        testIllegalInputHandle = File.createTempFile("channelsIllegalInputTest", "txt");
+        testIllegalOutputHandle = File.createTempFile("channelsIllegalOutputTest", "txt");
+        testFile = testFileHandle.getAbsolutePath();
+        testIllegalInput = testIllegalInputHandle.getAbsolutePath();
+        testIllegalOutput = testIllegalOutputHandle.getAbsolutePath();
+    }
+    // BEGIN Android-changed: Using temp file instead of user.dir
 
     /*
      * DataProvider for read and write test.
