@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 1998, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,34 +21,24 @@
  * questions.
  */
 
-package java.security.interfaces;
-
-import java.math.BigInteger;
-
 /**
- * The interface to an RSA private key.
- *
- * @author Jan Luehe
- * @since 1.2
- *
- *
- * @see RSAPrivateCrtKey
+ * @test
+ * @bug 4402326
+ * @summary  URLDecoder fails with certain input
  */
+package test.java.net.URLDecoder;
 
-public interface RSAPrivateKey extends java.security.PrivateKey, RSAKey
-{
+import java.net.*;
+import org.testng.annotations.Test;
+import org.testng.Assert;
 
-    /**
-     * The type fingerprint that is set to indicate
-     * serialization compatibility with a previous
-     * version of the type.
-     */
-    static final long serialVersionUID = 5187144804936595022L;
+public class EncodeDecode {
 
-    /**
-     * Returns the private exponent.
-     *
-     * @return the private exponent
-     */
-    public BigInteger getPrivateExponent();
+    @Test
+    public void testEncodeDecode() {
+        String str = "fds@$";
+        String encStr = URLEncoder.encode(str);
+        String decStr = URLDecoder.decode(encStr);
+        Assert.assertEquals(str, decStr);
+    }
 }
