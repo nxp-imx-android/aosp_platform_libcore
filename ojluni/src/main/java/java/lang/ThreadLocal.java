@@ -608,15 +608,12 @@ public class ThreadLocal<T> {
             for (i = nextIndex(staleSlot, len);
                  (e = tab[i]) != null;
                  i = nextIndex(i, len)) {
-                // Android-changed: Use refersTo().
-                // ThreadLocal<?> k = e.get();
-                // if (k == null) {
-                if (e.refersTo(null)) {
+                ThreadLocal<?> k = e.get();
+                if (k == null) {
                     e.value = null;
                     tab[i] = null;
                     size--;
                 } else {
-                    ThreadLocal<?> k = e.get();
                     int h = k.threadLocalHashCode & (len - 1);
                     if (h != i) {
                         tab[i] = null;
