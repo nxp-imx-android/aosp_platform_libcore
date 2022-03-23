@@ -74,37 +74,43 @@ public class Transformers {
             return super.clone();
         }
 
-        protected void invokeFromTransform(MethodHandle target, EmulatedStackFrame stackFrame)
-                throws Throwable {
+        /**
+         * Performs a MethodHandle.invoke() call with arguments held in an
+         * EmulatedStackFrame.
+         * @param target the method handle to invoke
+         * @param stackFrame the stack frame containing arguments for the invocation
+         */
+        protected static void invokeFromTransform(MethodHandle target,
+                                                  EmulatedStackFrame stackFrame) throws Throwable {
             if (target instanceof Transformer) {
                 ((Transformer) target).transform(stackFrame);
             } else {
-                target.invoke(stackFrame);
+                final MethodHandle adaptedTarget = target.asType(stackFrame.getMethodType());
+                adaptedTarget.invokeExactWithFrame(stackFrame);
             }
         }
 
-        protected void invokeExactFromTransform(MethodHandle target, EmulatedStackFrame stackFrame)
-                throws Throwable {
+        /**
+         * Performs a MethodHandle.invokeExact() call with arguments held in an
+         * EmulatedStackFrame.
+         * @param target the method handle to invoke
+         * @param stackFrame the stack frame containing arguments for the invocation
+         */
+        protected void invokeExactFromTransform(MethodHandle target,
+                                                EmulatedStackFrame stackFrame) throws Throwable {
             if (target instanceof Transformer) {
                 ((Transformer) target).transform(stackFrame);
             } else {
-                target.invokeExact(stackFrame);
+                target.invokeExactWithFrame(stackFrame);
             }
         }
     }
 
-    /**
-     * A method handle that always throws an exception of a specified type.
-     *
-     * <p>The handle declares a nominal return type, which is immaterial to the execution of the
-     * handle because it never returns.
-     *
-     * @hide
-     */
-    public static class AlwaysThrow extends Transformer {
+    /** Implements {@code MethodHandles.throwException}. */
+    static class AlwaysThrow extends Transformer {
         private final Class<? extends Throwable> exceptionType;
 
-        public AlwaysThrow(Class<?> nominalReturnType, Class<? extends Throwable> exType) {
+        AlwaysThrow(Class<?> nominalReturnType, Class<? extends Throwable> exType) {
             super(MethodType.methodType(nominalReturnType, exType));
             this.exceptionType = exType;
         }
@@ -116,12 +122,12 @@ public class Transformers {
     }
 
     /** Implements {@code MethodHandles.dropArguments}. */
-    public static class DropArguments extends Transformer {
+    static class DropArguments extends Transformer {
         private final MethodHandle delegate;
         private final EmulatedStackFrame.Range range1;
         private final EmulatedStackFrame.Range range2;
 
-        public DropArguments(MethodType type, MethodHandle delegate, int startPos, int numDropped) {
+        DropArguments(MethodType type, MethodHandle delegate, int startPos, int numDropped) {
             super(type);
 
             this.delegate = delegate;
@@ -147,14 +153,14 @@ public class Transformers {
     }
 
     /** Implements {@code MethodHandles.catchException}. */
-    public static class CatchException extends Transformer {
+    static class CatchException extends Transformer {
         private final MethodHandle target;
         private final MethodHandle handler;
         private final Class<?> exType;
 
         private final EmulatedStackFrame.Range handlerArgsRange;
 
-        public CatchException(MethodHandle target, MethodHandle handler, Class<?> exType) {
+        CatchException(MethodHandle target, MethodHandle handler, Class<?> exType) {
             super(target.type());
 
             this.target = target;
@@ -203,14 +209,14 @@ public class Transformers {
     }
 
     /** Implements {@code MethodHandles.tryFinally}. */
-    public static class TryFinally extends Transformer {
+    static class TryFinally extends Transformer {
         /** The target handle to try. */
         private final MethodHandle target;
 
         /** The cleanup handle to invoke after the target. */
         private final MethodHandle cleanup;
 
-        public TryFinally(MethodHandle target, MethodHandle cleanup) {
+        TryFinally(MethodHandle target, MethodHandle cleanup) {
             super(target.type());
             this.target = target;
             this.cleanup = cleanup;
@@ -267,14 +273,14 @@ public class Transformers {
     }
 
     /** Implements {@code MethodHandles.GuardWithTest}. */
-    public static class GuardWithTest extends Transformer {
+    static class GuardWithTest extends Transformer {
         private final MethodHandle test;
         private final MethodHandle target;
         private final MethodHandle fallback;
 
         private final EmulatedStackFrame.Range testArgsRange;
 
-        public GuardWithTest(MethodHandle test, MethodHandle target, MethodHandle fallback) {
+        GuardWithTest(MethodHandle test, MethodHandle target, MethodHandle fallback) {
             super(target.type());
 
             this.test = test;
@@ -305,11 +311,11 @@ public class Transformers {
         }
     }
 
-    /** Implementation of MethodHandles.arrayElementGetter for reference types. */
-    public static class ReferenceArrayElementGetter extends Transformer {
+    /** Implements {@code MethodHandles.arrayElementGetter}. */
+    static class ReferenceArrayElementGetter extends Transformer {
         private final Class<?> arrayClass;
 
-        public ReferenceArrayElementGetter(Class<?> arrayClass) {
+        ReferenceArrayElementGetter(Class<?> arrayClass) {
             super(
                     MethodType.methodType(
                             arrayClass.getComponentType(), new Class<?>[] {arrayClass, int.class}));
@@ -333,11 +339,11 @@ public class Transformers {
         }
     }
 
-    /** Implementation of MethodHandles.arrayElementSetter for reference types. */
-    public static class ReferenceArrayElementSetter extends Transformer {
+    /** Implements {@code MethodHandles.arrayElementSetter}. */
+    static class ReferenceArrayElementSetter extends Transformer {
         private final Class<?> arrayClass;
 
-        public ReferenceArrayElementSetter(Class<?> arrayClass) {
+        ReferenceArrayElementSetter(Class<?> arrayClass) {
             super(
                     MethodType.methodType(
                             void.class,
@@ -359,11 +365,11 @@ public class Transformers {
         }
     }
 
-    /** Implementation of MethodHandles.identity() for reference types. */
-    public static class ReferenceIdentity extends Transformer {
+    /** Implements {@code MethodHandles.identity}. */
+    static class ReferenceIdentity extends Transformer {
         private final Class<?> type;
 
-        public ReferenceIdentity(Class<?> type) {
+        ReferenceIdentity(Class<?> type) {
             super(MethodType.methodType(type, type));
             this.type = type;
         }
@@ -380,7 +386,8 @@ public class Transformers {
         }
     }
 
-    public static class ZeroValue extends Transformer {
+    /** Implements {@code MethodHandles.makeZero}. */
+    static class ZeroValue extends Transformer {
         public ZeroValue(Class<?> type) {
             super(MethodType.methodType(type));
         }
@@ -391,10 +398,11 @@ public class Transformers {
         }
     }
 
-    public static class ArrayConstructor extends Transformer {
+    /** Implements {@code MethodHandles.arrayConstructor}. */
+    static class ArrayConstructor extends Transformer {
         private final Class<?> componentType;
 
-        public ArrayConstructor(Class<?> arrayType) {
+        ArrayConstructor(Class<?> arrayType) {
             super(MethodType.methodType(arrayType, int.class));
             componentType = arrayType.getComponentType();
         }
@@ -409,10 +417,11 @@ public class Transformers {
         }
     }
 
-    public static class ArrayLength extends Transformer {
+    /** Implements {@code MethodHandles.arrayLength}. */
+    static class ArrayLength extends Transformer {
         private final Class<?> arrayType;
 
-        public ArrayLength(Class<?> arrayType) {
+        ArrayLength(Class<?> arrayType) {
             super(MethodType.methodType(int.class, arrayType));
             this.arrayType = arrayType;
         }
@@ -461,11 +470,13 @@ public class Transformers {
             writer.putNextInt(length);
         }
     }
-    /*package*/ static class Construct extends Transformer {
+
+    /** Implements {@code MethodHandles.createMethodHandleForConstructor}. */
+    static class Construct extends Transformer {
         private final MethodHandle constructorHandle;
         private final EmulatedStackFrame.Range callerRange;
 
-        /*package*/ Construct(MethodHandle constructorHandle, MethodType returnedType) {
+        Construct(MethodHandle constructorHandle, MethodType returnedType) {
             super(returnedType);
             this.constructorHandle = constructorHandle;
             this.callerRange = EmulatedStackFrame.Range.all(type());
@@ -510,18 +521,14 @@ public class Transformers {
         }
     }
 
-    /**
-     * Implements MethodHandle.bindTo.
-     *
-     * @hide
-     */
-    public static class BindTo extends Transformer {
+    /** Implements {@code MethodHandle.bindTo}. */
+    static class BindTo extends Transformer {
         private final MethodHandle delegate;
         private final Object receiver;
 
         private final EmulatedStackFrame.Range range;
 
-        public BindTo(MethodHandle delegate, Object receiver) {
+        BindTo(MethodHandle delegate, Object receiver) {
             super(delegate.type().dropParameterTypes(0, 1));
 
             this.delegate = delegate;
@@ -548,14 +555,14 @@ public class Transformers {
         }
     }
 
-    /** Implements MethodHandle.filterReturnValue. */
-    public static class FilterReturnValue extends Transformer {
+    /** Implements {@code MethodHandle.filterReturnValue}. */
+    static class FilterReturnValue extends Transformer {
         private final MethodHandle target;
         private final MethodHandle filter;
 
         private final EmulatedStackFrame.Range allArgs;
 
-        public FilterReturnValue(MethodHandle target, MethodHandle filter) {
+        FilterReturnValue(MethodHandle target, MethodHandle filter) {
             super(MethodType.methodType(filter.type().rtype(), target.type().ptypes()));
 
             this.target = target;
@@ -592,16 +599,12 @@ public class Transformers {
         }
     }
 
-    /*
-     * Implements MethodHandles.permuteArguments.
-     *
-     * @hide
-     */
-    public static class PermuteArguments extends Transformer {
+    /** Implements {@code MethodHandles.permuteArguments}. */
+    static class PermuteArguments extends Transformer {
         private final MethodHandle target;
         private final int[] reorder;
 
-        public PermuteArguments(MethodType type, MethodHandle target, int[] reorder) {
+        PermuteArguments(MethodType type, MethodHandle target, int[] reorder) {
             super(type);
 
             this.target = target;
@@ -629,17 +632,13 @@ public class Transformers {
         }
     }
 
-    /**
-     * Makes a variable-arity adapter that groups trailing varargs arguments into an array.
-     *
-     * @hide
-     */
-    /*package*/ static class VarargsCollector extends Transformer {
+    /** Implements {@code MethodHandle.asVarargsCollector}. */
+    static class VarargsCollector extends Transformer {
         final MethodHandle target;
         private final Class<?> arrayType;
 
-        /*package*/ VarargsCollector(MethodHandle target) {
-            super(target.type(), MethodHandle.INVOKE_CALLSITE_TRANSFORM);
+        VarargsCollector(MethodHandle target) {
+            super(target.type());
 
             Class<?>[] parameterTypes = target.type().ptypes();
             if (!lastParameterTypeIsAnArray(parameterTypes)) {
@@ -1166,7 +1165,7 @@ public class Transformers {
         }
     }
 
-    /** Implements MethodHandles.invoker & MethodHandles.exactInvoker. */
+    /** Implements {@code MethodHandles.invoker} and {@code MethodHandles.exactInvoker}. */
     static class Invoker extends Transformer {
         private final MethodType targetType;
         private final boolean isExactInvoker;
@@ -1181,17 +1180,6 @@ public class Transformers {
 
         @Override
         public void transform(EmulatedStackFrame emulatedStackFrame) throws Throwable {
-            // We need to artificially throw a WrongMethodTypeException here because we
-            // can't call invokeExact on the target inside the transformer.
-            if (isExactInvoker) {
-                MethodType callsiteType =
-                        emulatedStackFrame.getCallsiteType().dropParameterTypes(0, 1);
-                if (!exactMatch(callsiteType, targetType)) {
-                    throw new WrongMethodTypeException(
-                            "Wrong type, Expected: " + targetType + " was: " + callsiteType);
-                }
-            }
-
             // The first argument to the stack frame is the handle that needs to be invoked.
             MethodHandle target = emulatedStackFrame.getReference(0, MethodHandle.class);
 
@@ -1200,7 +1188,11 @@ public class Transformers {
             emulatedStackFrame.copyRangeTo(targetFrame, copyRange, 0, 0);
 
             // Finally, invoke the handle and copy the return value.
-            invokeFromTransform(target, targetFrame);
+            if (isExactInvoker) {
+                invokeExactFromTransform(target, targetFrame);
+            } else {
+                invokeFromTransform(target, targetFrame);
+            }
             targetFrame.copyReturnValueTo(emulatedStackFrame);
         }
 
@@ -1246,7 +1238,7 @@ public class Transformers {
         }
     }
 
-    /** Implements MethodHandle.asSpreader / MethodHandles.spreadInvoker. */
+    /** Implements {@code MethodHandle.asSpreader}. */
     static class Spreader extends Transformer {
         /** The method handle we're delegating to. */
         private final MethodHandle target;
@@ -1292,7 +1284,10 @@ public class Transformers {
             // Get the array reference and check that its length is as expected.
             final Class<?> arrayType = type().parameterType(arrayOffset);
             final Object arrayObj = callerFrame.getReference(arrayOffset, arrayType);
-            final int arrayLength = Array.getLength(arrayObj);
+
+            // The incoming array may be null if the expected number of array arguments is zero.
+            final int arrayLength =
+                (numArrayArgs == 0 && arrayObj == null) ? 0 : Array.getLength(arrayObj);
             if (arrayLength != numArrayArgs) {
                 throw new IllegalArgumentException(
                         "Invalid array length " + arrayLength + " expected " + numArrayArgs);
@@ -1313,11 +1308,20 @@ public class Transformers {
                     leadingRange.numReferences + numArrayArgs, leadingRange.numBytes);
             }
 
-            // Attach the writer, prepare to spread the trailing array arguments into
-            // the callee frame.
-            StackFrameWriter writer = new StackFrameWriter();
-            writer.attach(targetFrame, arrayOffset, leadingRange.numReferences, leadingRange.numBytes);
+            if (arrayLength != 0) {
+                StackFrameWriter writer = new StackFrameWriter();
+                writer.attach(targetFrame,
+                              arrayOffset,
+                              leadingRange.numReferences,
+                              leadingRange.numBytes);
+                spreadArray(arrayType, arrayObj, writer);
+            }
 
+            invokeExactFromTransform(target, targetFrame);
+            targetFrame.copyReturnValueTo(callerFrame);
+        }
+
+        private void spreadArray(Class<?> arrayType, Object arrayObj, StackFrameWriter writer) {
             final Class<?> componentType = arrayType.getComponentType();
             switch (Wrapper.basicTypeChar(componentType)) {
                 case 'L':
@@ -1393,13 +1397,10 @@ public class Transformers {
                     break;
                 }
             }
-
-            invokeExactFromTransform(target, targetFrame);
-            targetFrame.copyReturnValueTo(callerFrame);
         }
     }
 
-    /** Implements MethodHandle.asCollector. */
+    /** Implements {@code MethodHandle.asCollector}. */
     static class Collector extends Transformer {
         private final MethodHandle target;
 
@@ -1553,9 +1554,7 @@ public class Transformers {
         }
     }
 
-    /*
-     * Implements MethodHandles.filterArguments.
-     */
+    /** Implements {@code MethodHandles.filterArguments}. */
     static class FilterArguments extends Transformer {
         /** The target handle. */
         private final MethodHandle target;
@@ -1633,7 +1632,7 @@ public class Transformers {
         }
     }
 
-    /** Implements MethodHandles.collectArguments. */
+    /** Implements {@code MethodHandles.collectArguments}. */
     static class CollectArguments extends Transformer {
         private final MethodHandle target;
         private final MethodHandle collector;
@@ -1717,7 +1716,7 @@ public class Transformers {
         }
     }
 
-    /** Implements MethodHandles.foldArguments. */
+    /** Implements {@code MethodHandles.foldArguments}. */
     static class FoldArguments extends Transformer {
         private final MethodHandle target;
         private final MethodHandle combiner;
@@ -1807,7 +1806,7 @@ public class Transformers {
         }
     }
 
-    /** Implements MethodHandles.insertArguments. */
+    /** Implements {@code MethodHandles.insertArguments}. */
     static class InsertArguments extends Transformer {
         private final MethodHandle target;
         private final int pos;
@@ -1894,10 +1893,11 @@ public class Transformers {
         }
     }
 
-    public static class AsTypeAdapter extends Transformer {
+    /** Implements {@code MethodHandle.asType}. */
+    static class AsTypeAdapter extends Transformer {
         private final MethodHandle target;
 
-        public AsTypeAdapter(MethodHandle target, MethodType type) {
+        AsTypeAdapter(MethodHandle target, MethodType type) {
             super(type);
             this.target = target;
         }
@@ -2283,11 +2283,11 @@ public class Transformers {
         }
     }
 
-    /** Implements {@link java.lang.invokeMethodHandles#explicitCastArguments()}. */
-    public static class ExplicitCastArguments extends Transformer {
+    /** Implements {@code MethodHandles.explicitCastArguments}. */
+    static class ExplicitCastArguments extends Transformer {
         private final MethodHandle target;
 
-        public ExplicitCastArguments(MethodHandle target, MethodType type) {
+        ExplicitCastArguments(MethodHandle target, MethodType type) {
             super(type);
             this.target = target;
         }
@@ -2600,14 +2600,10 @@ public class Transformers {
 
         private static void unboxNonNull(
                 final Object ref,
-                final Class<?> from,
                 final StackFrameWriter writer,
                 final Class<?> to) {
+            final Class<?> from = ref.getClass();
             final Class<?> unboxedFromType = Wrapper.asPrimitiveType(from);
-            if (unboxedFromType == from) {
-                badCast(from, to);
-                return;
-            }
             switch (Wrapper.basicTypeChar(unboxedFromType)) {
                 case 'Z':
                     boolean z = (boolean) ref;
@@ -2872,13 +2868,12 @@ public class Transformers {
 
         private static void unbox(
                 final Object ref,
-                final Class<?> from,
                 final StackFrameWriter writer,
                 final Class<?> to) {
             if (ref == null) {
                 unboxNull(writer, to);
             } else {
-                unboxNonNull(ref, from, writer, to);
+                unboxNonNull(ref, writer, to);
             }
         }
 
@@ -2943,7 +2938,7 @@ public class Transformers {
                 Object ref = reader.nextReference(from);
                 if (to.isPrimitive()) {
                     // |from| is a reference type, |to| is a primitive type,
-                    unbox(ref, from, writer, to);
+                    unbox(ref, writer, to);
                 } else if (to.isInterface()) {
                     // Pass from without a cast according to description for
                     // {@link java.lang.invoke.MethodHandles#explicitCastArguments()}.
@@ -2956,10 +2951,8 @@ public class Transformers {
         }
     }
 
-    /**
-     * Implements transform for use by MethodHandles.loop().
-     */
-    public static class Loop extends Transformer {
+    /** Implements {@code MethodHandles.loop}. */
+    static class Loop extends Transformer {
 
         /** Loop variable initialization methods. */
         final MethodHandle[] inits;
